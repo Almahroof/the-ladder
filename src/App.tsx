@@ -5,6 +5,7 @@ import { useSeason } from './store/useSeason'
 import { Dashboard } from './ui/Dashboard'
 import { Fixtures } from './ui/Fixtures'
 import { HeadToHead } from './ui/HeadToHead'
+import { Insights } from './ui/Insights'
 import { MatchEntry } from './ui/MatchEntry'
 import { SeasonSetup } from './ui/SeasonSetup'
 import { Banner, Button } from './ui/components'
@@ -17,12 +18,15 @@ import { Banner, Button } from './ui/components'
  * and still gives working back and forward buttons — which matters when the app
  * is mostly used one-handed on a phone.
  */
+// `short` is used in the phone's bottom bar, where six full labels would wrap
+// into an unreadable two-line nav. Screen 11 uses the same abbreviations.
 const SCREENS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-  { id: 'entry', label: 'Match entry', icon: '＋' },
-  { id: 'h2h', label: 'Head-to-head', icon: '⊞' },
-  { id: 'fixtures', label: 'Fixtures', icon: '▤' },
-  { id: 'setup', label: 'Setup & pools', icon: '⚙' },
+  { id: 'dashboard', label: 'Dashboard', short: 'Home', icon: '▦' },
+  { id: 'entry', label: 'Match entry', short: 'Add', icon: '＋' },
+  { id: 'h2h', label: 'Head-to-head', short: 'H2H', icon: '⊞' },
+  { id: 'insights', label: 'Insights', short: 'Stats', icon: '◱' },
+  { id: 'fixtures', label: 'Fixtures', short: 'Fixtures', icon: '▤' },
+  { id: 'setup', label: 'Setup & pools', short: 'Setup', icon: '⚙' },
 ] as const
 
 type ScreenId = (typeof SCREENS)[number]['id']
@@ -104,7 +108,8 @@ export function App() {
               }`}
             >
               <span aria-hidden>{item.icon}</span>
-              {item.label}
+              <span className="sm:hidden">{item.short}</span>
+              <span className="hidden sm:inline">{item.label}</span>
             </a>
           ))}
         </nav>
@@ -115,6 +120,7 @@ export function App() {
           {screen === 'dashboard' && <Dashboard season={season} />}
           {screen === 'entry' && <MatchEntry season={season} />}
           {screen === 'h2h' && <HeadToHead season={season} />}
+          {screen === 'insights' && <Insights season={season} />}
           {screen === 'fixtures' && <Fixtures season={season} />}
           {screen === 'setup' && <SeasonSetup season={season} />}
         </main>

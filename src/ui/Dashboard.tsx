@@ -84,7 +84,13 @@ export function Dashboard({ season }: { season: Season }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card label="Tournament table" sub="Win 3 · Draw 1 · Loss 0 — the fun table">
+        {/* min-w-0: grid items default to min-width:auto, so a wide table
+            stretches the column rather than scrolling inside it. */}
+        <Card
+          className="min-w-0"
+          label="Tournament table"
+          sub="Win 3 · Draw 1 · Loss 0 — the fun table"
+        >
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs text-neutral-500">
@@ -134,6 +140,7 @@ export function Dashboard({ season }: { season: Season }) {
         </Card>
 
         <Card
+          className="min-w-0"
           label="Skill ranking"
           sub="Elo with team-rating handicap — the table that decides who is better"
         >
