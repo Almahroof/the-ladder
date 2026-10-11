@@ -65,7 +65,7 @@ describe('parseSeasonFile', () => {
   it('falls back to the default tier bands when they are empty', () => {
     const { file, problems } = parseSeasonFile({ ...seasonFile, tierMinimums: [] })
 
-    expect(file.tierMinimums).toEqual([85, 83, 80, 77])
+    expect(file.tierMinimums).toEqual([84, 80, 78, 76])
     expect(problems.some((p) => p.includes('tierMinimums'))).toBe(true)
   })
 
@@ -101,7 +101,7 @@ describe('toConfig', () => {
       name: 'Season 1',
       playerIds: ['shadow', 'yusuf', 'jonathan', 'nana-kojo'],
       elo: DEFAULT_ELO_PARAMS,
-      tierMinimums: [85, 83, 80, 77],
+      tierMinimums: [84, 80, 78, 76],
       poolSize: 10,
       maxUsesPerTeam: 3,
       maxTopTierPerPool: 2,

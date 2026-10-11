@@ -73,9 +73,11 @@ src/
     teams.ts       catalogue and tier bands
     season.ts      config, pools, fairness and the season cap
     schedule.ts    round-robin fixture generation
+    draft.ts       snake order and pick validation
     random.ts      seeded RNG, so every draw is reproducible
     tables.ts      tournament table, head-to-head matrix
     confidence.ts  bootstrap resampling for the "too close to call" label
+    insights.ts    upsets, tiers, handicap calibration
   store/         load, save, export, import
   ui/            screens and components
 data/
@@ -127,7 +129,7 @@ All randomness is seeded; `Math.random` is not used anywhere in the engine. A
 fixture list can be redrawn from its seed and shown to be the one that was
 actually generated, which matters for a system meant to settle arguments.
 
-### M4 — Match entry ✅ *(logic; UI pending)*
+### M4 — Match entry ✅
 
 `match.ts`: the match record from §9, `validateEntry()` with every §5.3 check,
 `previewEntry()` for the rating-impact panel, and `appendMatch()` for
@@ -142,9 +144,9 @@ got wrong — see [Review findings](#review-findings):
   are evaluated, and must name the same leg of the same fixture.
 - Team usage is **per season**; Elo is not (§10 carries it over).
 
-The entry screens themselves (02–04) are still to build.
+Screens 02–04 are built on top of this.
 
-### M5 — The tables ✅ *(logic; UI pending)*
+### M5 — The tables ✅
 
 `tables.ts` and `confidence.ts`.
 
@@ -162,19 +164,23 @@ league order depend on the roster order. And a player with **no matches** has
 no confidence band at all, only a placeholder — so nobody is crowned while
 anyone is still unmeasured.
 
-### M6 — The app ← *next*
+### M6 — The app ✅
 
-Everything above is engine. Nothing is on screen yet.
+Vite + React + Tailwind, the `Store` layer from section 3, and every screen
+from the mockups: dashboard, match entry, fixtures, head-to-head, insights,
+draft night, and setup & pools. Deployed to GitHub Pages, tests gating the
+deploy.
 
-Vite + React + Tailwind scaffold, the `Store` layer from section 3, then the
-screens: dashboard, match entry, skill ranking, head-to-head, season setup, and
-the phone layout from screen 11. Then the Pages workflow and a live URL.
+### M7 — Real ratings ✅
 
-### Later, once games have actually been played
+`data/teams.json` replaced with 128 real clubs derived from EA's FC 26 launch
+database. Tier bands recut from the real distribution. See open question 5.
 
-Draft night (screen 09), Elo-over-time chart, insights (screen 07), and the
-tuning exercise from §6 — after 40–60 matches, check whether 20 Elo per
-team-rating point is actually the right constant.
+### Still to come, once games have been played
+
+The Elo-over-time chart from screen 05, and the tuning exercise from §6 — after
+40–60 matches, check whether 20 Elo per team-rating point is right. The Insights
+screen now does that calculation; it just needs data.
 
 ---
 
@@ -305,13 +311,21 @@ toggle is pure flavour — worth knowing before building UI around it.
 
 ### 5. Team ratings are placeholders
 
-`data/teams.json` holds the 40 clubs from the mockups with their illustrative
-ratings, flagged `"placeholder": true`. These **must** be replaced with real
-FC26 release-day values before the draft locks, since they feed the handicap
-directly.
+Resolved. `data/teams.json` now holds 128 real clubs derived from EA's FC 26
+launch player database, dated 19 September 2025.
 
-One consequence worth knowing: that catalogue contains only **two** tier-1
-teams, so §3's "at most 2 from the top tier" rule can never actually fire. A
-real catalogue with ~10 elite teams will make it bite.
+FC 26 rates clubs in **stars**, not numbers, so there is no official single
+overall to copy. A club's rating is `floor(mean overall of its starting XI)`,
+which reproduces all eight published figures that could be checked, exactly.
 
-**Status: unresolved. Blocks the season, not the build.**
+Two things improved as a result. §3's "at most 2 from the top tier" rule now
+actually fires — the mockup catalogue had only two tier-1 clubs, so it was
+unreachable. And tier bands are cut from the real distribution rather than from
+invented numbers.
+
+The mockup catalogue is kept at `src/engine/__fixtures__/mockup-teams.json`,
+because the tests that reproduce screen 08's published figures depend on it.
+Test data and production data are now separate, which they should always have
+been.
+
+**Status: resolved.**

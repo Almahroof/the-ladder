@@ -168,7 +168,7 @@ A tier consistently above or below is the clearest sign it needs moving.
 ```bash
 npm install
 npm run dev        # local, at http://localhost:5173
-npm test           # 326 tests
+npm test           # 336 tests
 npm run typecheck
 npm run build      # typecheck + production build
 ```
@@ -201,20 +201,36 @@ settling arguments.
 
 ---
 
-## Before the season counts
+## Where the team ratings come from
 
-Two things are still open. Both are in
-[PLAN.md](PLAN.md#open-questions) in full.
+FC 26 does not give clubs a single numeric overall — in game they are rated in
+**stars**, and seven clubs share five stars. That is far too coarse for a
+handicap worth 20 Elo per rating point, so `data/teams.json` derives one:
 
-**The team ratings are placeholders.** `data/teams.json` holds the illustrative
-ratings from the design mockups, flagged in the app. They must be replaced with
-real FC26 release-day values before the draft locks, because the handicap, the
-tiers, the fairness check and the calibration all depend on them.
+```
+rating = floor(mean overall of the club's starting XI)
+```
+
+from EA's launch player database (`fifa_version` 26, dated 19 September 2025 —
+release day, as section 4.2 requires). The derivation was checked against the
+eight clubs whose numeric ratings are published elsewhere and matches all eight
+exactly.
+
+The catalogue is **128 clubs**: every club in the big-five European leagues,
+plus every other top-flight club rated 74 or above. Tier bands are cut from the
+real distribution at `[84, 80, 78, 76]`, giving 8 / 13 / 18 / 31 / 58. Section 8
+suggests roughly 10 / 15 / 20 / 25, which is not reachable with integer
+thresholds because a third of the catalogue sits between 74 and 77 — so the
+bands favour keeping tier 1 genuinely elite, since the draft's "at most two from
+the top tier" rule is the only one that depends on a boundary.
+
+## Still open
 
 **Pool size.** Ten teams at three uses each gives exactly 30 slots for exactly
 30 fixtures — it fits, but with no slack, so every team must be used all three
-times and nobody can avoid one they have come to hate. Twelve gives room. The
-setup screen flags this until it is decided.
+times and nobody can avoid one they have come to hate. Raising the cap to four,
+or the pool to twelve, gives room. The setup screen flags this until it is
+decided. Full detail in [PLAN.md](PLAN.md#open-questions).
 
 ---
 

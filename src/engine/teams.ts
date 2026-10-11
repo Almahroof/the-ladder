@@ -24,11 +24,16 @@ export interface RatedTeam extends Team {
 
 /**
  * Minimum release rating for tiers 1 to 4; anything below the last entry is
- * tier 5. Section 8 says the real bands should be cut from the real ratings —
- * these reproduce every tier label shown in the mockups, and are season config
- * rather than a constant precisely so they can be recut.
+ * tier 5.
+ *
+ * Cut from the real FC 26 release ratings, as section 8 asks. The real
+ * distribution has a fat middle — a third of the catalogue sits on 74 to 77 —
+ * so section 8's suggested sizes of roughly 10 / 15 / 20 / 25 are not reachable
+ * with integer thresholds. These give 8 / 13 / 18 / 31 / 58, which keeps tier 1
+ * genuinely elite. That matters most, because the draft's "at most two from the
+ * top tier" rule is the only one that depends on a tier boundary.
  */
-export const DEFAULT_TIER_MINIMUMS: readonly number[] = [85, 83, 80, 77]
+export const DEFAULT_TIER_MINIMUMS: readonly number[] = [84, 80, 78, 76]
 
 /** The number of tiers a given set of minimums produces. */
 export function tierCount(minimums: readonly number[] = DEFAULT_TIER_MINIMUMS): number {

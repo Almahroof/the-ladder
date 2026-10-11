@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { SAMPLE_TEAMS } from './__fixtures__/sample-season'
+import { MOCKUP_TIER_MINIMUMS, SAMPLE_TEAMS } from './__fixtures__/sample-season'
 import {
   DEFAULT_TIER_MINIMUMS,
   assertValidTierMinimums,
@@ -12,17 +12,33 @@ import {
 
 describe('tierOf', () => {
   it('reproduces every tier label shown in the mockups', () => {
-    // Screen 08 pool list, and the T3 badges on screen 03.
-    expect(tierOf(85)).toBe(1) // Real Madrid
-    expect(tierOf(84)).toBe(2) // Bayern, drafted by Shadow as one of three T2s
-    expect(tierOf(83)).toBe(2) // Inter, Arsenal
-    expect(tierOf(82)).toBe(3) // Chelsea
-    expect(tierOf(81)).toBe(3) // Dortmund
-    expect(tierOf(80)).toBe(3) // Roma
-    expect(tierOf(79)).toBe(4) // Athletic, Porto
-    expect(tierOf(77)).toBe(4) // Marseille, Lyon
-    expect(tierOf(76)).toBe(5) // Galatasaray
-    expect(tierOf(74)).toBe(5) // Boca Juniors
+    // Screen 08's pool list and the T3 badges on screen 03, against the bands
+    // the mockups were drawn with rather than today's defaults.
+    const band = MOCKUP_TIER_MINIMUMS
+    expect(tierOf(85, band)).toBe(1) // Real Madrid
+    expect(tierOf(84, band)).toBe(2) // Bayern, one of Shadow's three T2s
+    expect(tierOf(83, band)).toBe(2) // Inter, Arsenal
+    expect(tierOf(82, band)).toBe(3) // Chelsea
+    expect(tierOf(81, band)).toBe(3) // Dortmund
+    expect(tierOf(80, band)).toBe(3) // Roma
+    expect(tierOf(79, band)).toBe(4) // Athletic, Porto
+    expect(tierOf(77, band)).toBe(4) // Marseille, Lyon
+    expect(tierOf(76, band)).toBe(5) // Galatasaray
+    expect(tierOf(74, band)).toBe(5) // Boca Juniors
+  })
+
+  it('cuts the real catalogue so tier 1 stays genuinely elite', () => {
+    // The max-2-per-pool rule is the only one that depends on a boundary, so
+    // tier 1 has to mean something. Defaults are [84, 80, 78, 76].
+    expect(tierOf(86)).toBe(1) // Liverpool, Paris Saint-Germain
+    expect(tierOf(84)).toBe(1) // Bayern, Manchester City — the edge of elite
+    expect(tierOf(82)).toBe(2) // Atlético Madrid
+    expect(tierOf(80)).toBe(2) // Juventus, Manchester United
+    expect(tierOf(79)).toBe(3) // Dortmund, Roma
+    expect(tierOf(78)).toBe(3) // Atalanta, Everton
+    expect(tierOf(77)).toBe(4)
+    expect(tierOf(76)).toBe(4)
+    expect(tierOf(75)).toBe(5)
   })
 
   it('puts anything below the last threshold in the bottom tier', () => {

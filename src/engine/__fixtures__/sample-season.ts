@@ -15,14 +15,26 @@
  *   Shadow       0   3   3   3   1   80.3
  */
 
-import catalogue from '../../../data/teams.json'
+import catalogue from './mockup-teams.json'
 import type { SeasonConfig } from '../season'
 import { DEFAULT_SEASON_CONFIG } from '../season'
 import { type RatedTeam, type Team, indexTeams, withTiers } from '../teams'
 
 export const PLAYERS = ['nana-kojo', 'jonathan', 'yusuf', 'shadow'] as const
 
-export const SAMPLE_TEAMS: RatedTeam[] = withTiers(catalogue.teams as Team[])
+/**
+ * The tier bands the mockups were drawn with.
+ *
+ * Stated explicitly rather than taken from `DEFAULT_TIER_MINIMUMS`, so that the
+ * engine's defaults can be recut for the real catalogue without silently
+ * changing what these tests are asserting.
+ */
+export const MOCKUP_TIER_MINIMUMS: readonly number[] = [85, 83, 80, 77]
+
+export const SAMPLE_TEAMS: RatedTeam[] = withTiers(
+  catalogue.teams as Team[],
+  MOCKUP_TIER_MINIMUMS,
+)
 
 const byId = indexTeams(SAMPLE_TEAMS)
 
@@ -87,6 +99,7 @@ export const SAMPLE_POOLS: Record<string, RatedTeam[]> = {
 
 export const SAMPLE_SEASON: SeasonConfig = {
   ...DEFAULT_SEASON_CONFIG,
+  tierMinimums: MOCKUP_TIER_MINIMUMS,
   id: 'season-1',
   name: 'Season 1',
   playerIds: [...PLAYERS],

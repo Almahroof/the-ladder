@@ -1,0 +1,287 @@
+{
+  "_comment": "The 40-team catalogue from the design mockups, kept as a TEST FIXTURE. Tests reproduce screen 08's published tier counts and average ratings against it, so it must not change. The real catalogue lives in data/teams.json.",
+  "placeholder": true,
+  "ratingsLockedAt": null,
+  "teams": [
+    {
+      "id": "real-madrid",
+      "name": "Real Madrid",
+      "shortCode": "RM",
+      "league": "La Liga",
+      "releaseOverall": 85
+    },
+    {
+      "id": "man-city",
+      "name": "Man City",
+      "shortCode": "MC",
+      "league": "Premier League",
+      "releaseOverall": 85
+    },
+    {
+      "id": "liverpool",
+      "name": "Liverpool",
+      "shortCode": "LIV",
+      "league": "Premier League",
+      "releaseOverall": 84
+    },
+    {
+      "id": "paris-sg",
+      "name": "Paris SG",
+      "shortCode": "PS",
+      "league": "Ligue 1",
+      "releaseOverall": 84
+    },
+    {
+      "id": "barcelona",
+      "name": "Barcelona",
+      "shortCode": "BAR",
+      "league": "La Liga",
+      "releaseOverall": 84
+    },
+    {
+      "id": "bayern",
+      "name": "Bayern",
+      "shortCode": "BAY",
+      "league": "Bundesliga",
+      "releaseOverall": 84
+    },
+    {
+      "id": "inter",
+      "name": "Inter",
+      "shortCode": "INT",
+      "league": "Serie A",
+      "releaseOverall": 83
+    },
+    {
+      "id": "arsenal",
+      "name": "Arsenal",
+      "shortCode": "ARS",
+      "league": "Premier League",
+      "releaseOverall": 83
+    },
+    {
+      "id": "juventus",
+      "name": "Juventus",
+      "shortCode": "JUV",
+      "league": "Serie A",
+      "releaseOverall": 82
+    },
+    {
+      "id": "ac-milan",
+      "name": "AC Milan",
+      "shortCode": "AM",
+      "league": "Serie A",
+      "releaseOverall": 82
+    },
+    {
+      "id": "atletico",
+      "name": "Atlético",
+      "shortCode": "ATL",
+      "league": "La Liga",
+      "releaseOverall": 82
+    },
+    {
+      "id": "chelsea",
+      "name": "Chelsea",
+      "shortCode": "CHE",
+      "league": "Premier League",
+      "releaseOverall": 82
+    },
+    {
+      "id": "man-united",
+      "name": "Man United",
+      "shortCode": "MU",
+      "league": "Premier League",
+      "releaseOverall": 81
+    },
+    {
+      "id": "tottenham",
+      "name": "Tottenham",
+      "shortCode": "TOT",
+      "league": "Premier League",
+      "releaseOverall": 81
+    },
+    {
+      "id": "dortmund",
+      "name": "Dortmund",
+      "shortCode": "DOR",
+      "league": "Bundesliga",
+      "releaseOverall": 81
+    },
+    {
+      "id": "leverkusen",
+      "name": "Leverkusen",
+      "shortCode": "LEV",
+      "league": "Bundesliga",
+      "releaseOverall": 81
+    },
+    {
+      "id": "atalanta",
+      "name": "Atalanta",
+      "shortCode": "ATA",
+      "league": "Serie A",
+      "releaseOverall": 80
+    },
+    {
+      "id": "newcastle",
+      "name": "Newcastle",
+      "shortCode": "NEW",
+      "league": "Premier League",
+      "releaseOverall": 80
+    },
+    {
+      "id": "aston-villa",
+      "name": "Aston Villa",
+      "shortCode": "AV",
+      "league": "Premier League",
+      "releaseOverall": 80
+    },
+    {
+      "id": "napoli",
+      "name": "Napoli",
+      "shortCode": "NAP",
+      "league": "Serie A",
+      "releaseOverall": 80
+    },
+    {
+      "id": "roma",
+      "name": "Roma",
+      "shortCode": "ROM",
+      "league": "Serie A",
+      "releaseOverall": 80
+    },
+    {
+      "id": "benfica",
+      "name": "Benfica",
+      "shortCode": "BEN",
+      "league": "Primeira Liga",
+      "releaseOverall": 79
+    },
+    {
+      "id": "athletic",
+      "name": "Athletic",
+      "shortCode": "ATH",
+      "league": "La Liga",
+      "releaseOverall": 79
+    },
+    {
+      "id": "lazio",
+      "name": "Lazio",
+      "shortCode": "LAZ",
+      "league": "Serie A",
+      "releaseOverall": 79
+    },
+    {
+      "id": "porto",
+      "name": "Porto",
+      "shortCode": "POR",
+      "league": "Primeira Liga",
+      "releaseOverall": 79
+    },
+    {
+      "id": "sporting-cp",
+      "name": "Sporting CP",
+      "shortCode": "SC",
+      "league": "Primeira Liga",
+      "releaseOverall": 79
+    },
+    {
+      "id": "sociedad",
+      "name": "Sociedad",
+      "shortCode": "SOC",
+      "league": "La Liga",
+      "releaseOverall": 78
+    },
+    {
+      "id": "sevilla",
+      "name": "Sevilla",
+      "shortCode": "SEV",
+      "league": "La Liga",
+      "releaseOverall": 78
+    },
+    {
+      "id": "ajax",
+      "name": "Ajax",
+      "shortCode": "AJA",
+      "league": "Eredivisie",
+      "releaseOverall": 78
+    },
+    {
+      "id": "monaco",
+      "name": "Monaco",
+      "shortCode": "MON",
+      "league": "Ligue 1",
+      "releaseOverall": 78
+    },
+    {
+      "id": "marseille",
+      "name": "Marseille",
+      "shortCode": "MAR",
+      "league": "Ligue 1",
+      "releaseOverall": 77
+    },
+    {
+      "id": "west-ham",
+      "name": "West Ham",
+      "shortCode": "WH",
+      "league": "Premier League",
+      "releaseOverall": 77
+    },
+    {
+      "id": "brighton",
+      "name": "Brighton",
+      "shortCode": "BRI",
+      "league": "Premier League",
+      "releaseOverall": 77
+    },
+    {
+      "id": "lyon",
+      "name": "Lyon",
+      "shortCode": "LYO",
+      "league": "Ligue 1",
+      "releaseOverall": 77
+    },
+    {
+      "id": "galatasaray",
+      "name": "Galatasaray",
+      "shortCode": "GAL",
+      "league": "Süper Lig",
+      "releaseOverall": 76
+    },
+    {
+      "id": "celtic",
+      "name": "Celtic",
+      "shortCode": "CEL",
+      "league": "Scottish Premiership",
+      "releaseOverall": 75
+    },
+    {
+      "id": "fenerbahce",
+      "name": "Fenerbahçe",
+      "shortCode": "FEN",
+      "league": "Süper Lig",
+      "releaseOverall": 75
+    },
+    {
+      "id": "boca-juniors",
+      "name": "Boca Juniors",
+      "shortCode": "BJ",
+      "league": "Liga Profesional",
+      "releaseOverall": 74
+    },
+    {
+      "id": "river-plate",
+      "name": "River Plate",
+      "shortCode": "RP",
+      "league": "Liga Profesional",
+      "releaseOverall": 74
+    },
+    {
+      "id": "flamengo",
+      "name": "Flamengo",
+      "shortCode": "FLA",
+      "league": "Série A",
+      "releaseOverall": 74
+    }
+  ]
+}
