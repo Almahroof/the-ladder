@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { RATINGS_ARE_PLACEHOLDER } from './store/load'
 import { useSeason } from './store/useSeason'
 import { Dashboard } from './ui/Dashboard'
+import { DraftNight } from './ui/DraftNight'
 import { Fixtures } from './ui/Fixtures'
 import { HeadToHead } from './ui/HeadToHead'
 import { Insights } from './ui/Insights'
@@ -26,6 +27,7 @@ const SCREENS = [
   { id: 'h2h', label: 'Head-to-head', short: 'H2H', icon: '⊞' },
   { id: 'insights', label: 'Insights', short: 'Stats', icon: '◱' },
   { id: 'fixtures', label: 'Fixtures', short: 'Fixtures', icon: '▤' },
+  { id: 'draft', label: 'Draft night', short: 'Draft', icon: '☰' },
   { id: 'setup', label: 'Setup & pools', short: 'Setup', icon: '⚙' },
 ] as const
 
@@ -122,6 +124,7 @@ export function App() {
           {screen === 'h2h' && <HeadToHead season={season} />}
           {screen === 'insights' && <Insights season={season} />}
           {screen === 'fixtures' && <Fixtures season={season} />}
+          {screen === 'draft' && <DraftNight season={season} />}
           {screen === 'setup' && <SeasonSetup season={season} />}
         </main>
 
