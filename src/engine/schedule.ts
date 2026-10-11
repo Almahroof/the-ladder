@@ -127,7 +127,15 @@ export function roundRobinCycle(playerIds: readonly string[]): Pairing[][] {
 
 export interface GenerateOptions {
   pools: Pools
-  /** Same seed, same fixture list. "Re-draw teams" means a new seed. */
+  /**
+   * Same seed, same fixture list. "Re-draw" means a new seed.
+   *
+   * **The seed must stay the same across incremental draws.** Round-robin
+   * order comes from `seed + cycleIndex`, so continuing a season under a
+   * different seed reshuffles the current cycle mid-way: pairings repeat
+   * before others have played, and the section 10 guarantee is lost. Persist
+   * the seed with the season and reuse it.
+   */
   seed: number
   /** How many rounds to add. Defaults to the rest of the season. */
   rounds?: number
@@ -137,6 +145,10 @@ export interface GenerateOptions {
    * Team usage from the match log. Pass this mid-season: field 4 lets a player
    * field a different team from the one drawn, so the schedule alone is not a
    * reliable record of what has actually been used.
+   *
+   * Merged with the usage implied by `existing` by taking the larger of the
+   * two per team, so passing an empty log cannot discard teams the schedule
+   * has already committed.
    */
   usage?: Readonly<Record<string, number>>
   /** Optional date per round, for the session calendar. */
@@ -214,7 +226,22 @@ export function generateFixtures(
     }
   }
 
-  const roundsAlready = perRoundCounts.size
+  // Counting rounds is only safe if they run 1, 2, 3... with no gaps. A gap
+  // would make the next round number collide with fixtures that already exist.
+  const present = [...perRoundCounts.keys()].sort((a, b) => a - b)
+  const gap = present.findIndex((round, index) => round !== index + 1)
+
+  if (gap !== -1) {
+    return {
+      fixtures: [],
+      issues: [
+        `Existing fixtures jump from round ${present[gap - 1] ?? 0} to ` +
+          `${present[gap]}. Rounds must run consecutively from 1.`,
+      ],
+    }
+  }
+
+  const roundsAlready = present.length
   const remaining = Math.max(0, totalRounds - roundsAlready)
   const wanted = options.rounds ?? remaining
 
@@ -224,14 +251,21 @@ export function generateFixtures(
     )
   }
 
-  const usage: Record<string, number> = {
-    ...(options.usage ??
-      teamUsage(
-        existing.flatMap((fixture) => [
-          { fixtureId: fixture.id, teamId: fixture.teamAId },
-          { fixtureId: fixture.id, teamId: fixture.teamBId },
-        ]),
-      )),
+  // Usage already committed, counting both what the schedule has assigned and
+  // what the log says was actually fielded. Merged by taking the larger of the
+  // two rather than letting either replace the other: an empty match log must
+  // not wipe out the teams existing fixtures have already claimed. Where a
+  // player swapped away from a drawn team this over-counts slightly, which
+  // errs towards respecting the cap rather than breaching it.
+  const usage: Record<string, number> = teamUsage(
+    existing.flatMap((fixture) => [
+      { fixtureId: fixture.id, teamId: fixture.teamAId },
+      { fixtureId: fixture.id, teamId: fixture.teamBId },
+    ]),
+  )
+
+  for (const [teamId, uses] of Object.entries(options.usage ?? {})) {
+    usage[teamId] = Math.max(usage[teamId] ?? 0, uses)
   }
 
   const pairingCounts = new Map<string, number>()

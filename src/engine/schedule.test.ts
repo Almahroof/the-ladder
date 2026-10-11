@@ -363,6 +363,124 @@ describe('generateFixtures', () => {
     expect(fixtures).toEqual([])
     expect(issues[0]).toMatch(/Round 3 is incomplete/)
   })
+
+  it('builds the same season a round at a time as it does in one go', () => {
+    // Drawing incrementally must be indistinguishable from drawing the lot,
+    // or "draw next round" quietly produces a different season from "draw the
+    // rest". Reusing the seed is what makes this hold.
+    const allAtOnce = fullSeason(99).fixtures
+
+    let piecemeal: Fixture[] = []
+    for (let i = 0; i < 30; i++) {
+      const { fixtures } = generateFixtures(SAMPLE_SEASON, {
+        pools: SAMPLE_POOLS,
+        seed: 99,
+        rounds: 1,
+        existing: piecemeal,
+      })
+      piecemeal = [...piecemeal, ...fixtures]
+    }
+
+    expect(piecemeal).toEqual(allAtOnce)
+  })
+
+  it('loses the round-robin guarantee if the seed changes mid-season', () => {
+    // Documents why the seed is persisted. Round-robin order comes from
+    // `seed + cycleIndex`, so continuing under a new seed reshuffles the
+    // current cycle and pairings repeat before others have played.
+    const firstRound = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 1,
+      rounds: 1,
+    }).fixtures
+
+    const rest = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 2, // a different seed: the mistake this test exists to describe
+      existing: firstRound,
+    }).fixtures
+
+    const counts = new Map<string, number>()
+    for (const fixture of [...firstRound, ...rest]) {
+      const key = pairingKey(fixture.playerAId, fixture.playerBId)
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+
+    // Every pairing should get exactly 10. Under a changed seed, they do not.
+    expect([...counts.values()].every((count) => count === 10)).toBe(false)
+  })
+
+  it('refuses to continue when the existing rounds skip one', () => {
+    // Counting rounds only works if they run 1, 2, 3... A gap would make the
+    // next round number collide with fixtures that already exist.
+    const six = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 7,
+      rounds: 3,
+    }).fixtures
+
+    const gappy = six.filter((f) => f.round !== 2)
+    const { fixtures, issues } = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 7,
+      rounds: 1,
+      existing: gappy,
+    })
+
+    expect(fixtures).toEqual([])
+    expect(issues[0]).toMatch(/consecutively from 1/)
+  })
+
+  it('does not let an empty match log discard scheduled team usage', () => {
+    // Regression: `usage` replaced the usage derived from existing fixtures,
+    // so passing a log with nothing played yet — the normal case when drawing
+    // ahead — forgot which teams earlier rounds had already claimed, and the
+    // season came out with teams used 2 to 4 times instead of exactly 3.
+    const firstRound = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 5,
+      rounds: 1,
+    }).fixtures
+
+    const rest = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 5,
+      existing: firstRound,
+      usage: {}, // nothing played yet
+    }).fixtures
+
+    const usage = teamUsage(
+      [...firstRound, ...rest].flatMap((f) => [
+        { fixtureId: f.id, teamId: f.teamAId },
+        { fixtureId: f.id, teamId: f.teamBId },
+      ]),
+    )
+
+    expect(Object.keys(usage)).toHaveLength(40)
+    for (const uses of Object.values(usage)) expect(uses).toBe(3)
+  })
+
+  it('honours team usage taken from the match log', () => {
+    // Field 4 lets a player field a team other than the one drawn, so the
+    // schedule alone is not a reliable record of what has been used.
+    const { fixtures } = generateFixtures(SAMPLE_SEASON, {
+      pools: SAMPLE_POOLS,
+      seed: 11,
+      rounds: 1,
+      usage: Object.fromEntries(
+        SAMPLE_POOLS['shadow']!.slice(0, 9).map((team) => [team.id, 3]),
+      ),
+    })
+
+    const shadowFixture = fixtures.find(
+      (f) => f.playerAId === 'shadow' || f.playerBId === 'shadow',
+    )!
+    const shadowTeam =
+      shadowFixture.playerAId === 'shadow' ? shadowFixture.teamAId : shadowFixture.teamBId
+
+    // Only the tenth team is under the cap, so it has to be the one drawn.
+    expect(shadowTeam).toBe(SAMPLE_POOLS['shadow']![9]!.id)
+  })
 })
 
 describe('fixtureStatus', () => {
