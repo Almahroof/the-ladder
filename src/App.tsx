@@ -4,6 +4,7 @@ import { RATINGS_ARE_PLACEHOLDER } from './store/load'
 import { useSeason } from './store/useSeason'
 import { Dashboard } from './ui/Dashboard'
 import { Fixtures } from './ui/Fixtures'
+import { MatchEntry } from './ui/MatchEntry'
 import { SeasonSetup } from './ui/SeasonSetup'
 import { Banner, Button } from './ui/components'
 
@@ -17,6 +18,7 @@ import { Banner, Button } from './ui/components'
  */
 const SCREENS = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
+  { id: 'entry', label: 'Match entry', icon: '＋' },
   { id: 'fixtures', label: 'Fixtures', icon: '▤' },
   { id: 'setup', label: 'Setup & pools', icon: '⚙' },
 ] as const
@@ -109,13 +111,13 @@ export function App() {
           <Notices season={season} importProblems={importProblems} />
 
           {screen === 'dashboard' && <Dashboard season={season} />}
+          {screen === 'entry' && <MatchEntry season={season} />}
           {screen === 'fixtures' && <Fixtures season={season} />}
           {screen === 'setup' && <SeasonSetup season={season} />}
         </main>
 
         <footer className="mt-10 text-xs text-neutral-700">
-          Match entry comes next. Results live in the repo; export and commit to share
-          them.
+          Results live in the repo; export and commit to share them.
         </footer>
       </div>
     </div>
