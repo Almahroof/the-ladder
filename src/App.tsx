@@ -97,7 +97,12 @@ export function App() {
           </Button>
         </header>
 
-        <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-edge bg-panel sm:static sm:mt-6 sm:gap-2 sm:border-0 sm:bg-transparent">
+        {/*
+          sm:flex-wrap because above the breakpoint the links size to their
+          content, and seven full labels do not fit a tablet-width window. On a
+          phone they are flex-1 and shrink instead, so wrapping never kicks in.
+        */}
+        <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-edge bg-panel sm:static sm:mt-6 sm:flex-wrap sm:gap-2 sm:border-0 sm:bg-transparent">
           {SCREENS.map((item) => (
             <a
               key={item.id}

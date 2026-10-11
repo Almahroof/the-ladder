@@ -66,9 +66,15 @@ export function SeasonSetup({ season }: { season: Season }) {
         </p>
       </div>
 
-      {!feasibility.ok && <Banner tone="error" title="Pools cannot cover the season.">{feasibility.message}</Banner>}
-      {feasibility.ok && feasibility.tight && (
-        <Banner title="Pools have no slack.">{feasibility.message}</Banner>
+      {/*
+        Only a genuine shortfall is raised to the page. An exact fit is a
+        consequence of the chosen numbers rather than a fault, so it sits as a
+        note beside the fields that cause it instead of as a standing alert.
+      */}
+      {!feasibility.ok && (
+        <Banner tone="error" title="Pools cannot cover the season.">
+          {feasibility.message}
+        </Banner>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -127,6 +133,12 @@ export function SeasonSetup({ season }: { season: Season }) {
             <Stat label="Matches" value={shape.totalMatches} />
             <Stat label="Each player" value={`${shape.matchesPerPlayer} games`} />
           </dl>
+
+          {feasibility.ok && (
+            <p className="mt-3 text-[11px] leading-relaxed text-neutral-600">
+              {feasibility.message}
+            </p>
+          )}
         </Card>
 
         <Card

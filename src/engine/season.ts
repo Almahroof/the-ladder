@@ -106,10 +106,11 @@ export interface PoolFeasibility {
 /**
  * Checks that a pool can actually cover a season.
  *
- * This is the check that surfaces PLAN.md open question 1: the documented
- * combination of a 10-team pool and a 3-use cap gives exactly 30 slots for
- * exactly 30 fixtures, so every team must be used the maximum number of times
- * and nobody can ever avoid a team they dislike. A 12-team pool fixes it.
+ * `tight` means the numbers close exactly: every team gets used the full cap,
+ * and swapping one out under section 5.1 field 4 means swapping another in. It
+ * is a consequence to know about, not a fault — 10 teams at 3 uses is the
+ * documented default and it works. The message says what will happen and stops
+ * there; whether that is the arrangement you want is not the engine's call.
  */
 export function checkPoolFeasibility(config: SeasonConfig): PoolFeasibility {
   const { fixturesPerPlayer } = scheduleShape(config)
@@ -126,10 +127,9 @@ export function checkPoolFeasibility(config: SeasonConfig): PoolFeasibility {
       `fixtures. The season cannot be completed. Raise the pool size or the cap.`
   } else if (tight) {
     message =
-      `A pool of ${config.poolSize} teams capped at ${config.maxUsesPerTeam} uses gives ` +
-      `exactly ${capacity} team-slots for ${fixturesPerPlayer} fixtures. Every team must be ` +
-      `used the full ${config.maxUsesPerTeam} times, leaving no flexibility. Consider a ` +
-      `pool of ${config.poolSize + 2}.`
+      `${capacity} team-slots for ${fixturesPerPlayer} fixtures — an exact fit. Every team ` +
+      `gets used all ${config.maxUsesPerTeam} times, so changing one at match entry means ` +
+      `changing another back later.`
   } else {
     message =
       `${capacity} team-slots for ${fixturesPerPlayer} fixtures, ${slack} spare.`

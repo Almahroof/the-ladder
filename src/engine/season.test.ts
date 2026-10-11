@@ -40,8 +40,9 @@ describe('scheduleShape', () => {
 })
 
 describe('checkPoolFeasibility', () => {
-  it('reports the documented 10-team pool as exactly tight', () => {
+  it('reports the documented 10-team pool as an exact fit', () => {
     // PLAN.md open question 1: 10 teams x 3 uses = 30 slots for 30 fixtures.
+    // It works, so this is stated as a consequence rather than a problem.
     const feasibility = checkPoolFeasibility(SAMPLE_SEASON)
 
     expect(feasibility).toMatchObject({
@@ -51,7 +52,8 @@ describe('checkPoolFeasibility', () => {
       ok: true,
       tight: true,
     })
-    expect(feasibility.message).toMatch(/no flexibility/)
+    expect(feasibility.message).toMatch(/exact fit/)
+    expect(feasibility.message).not.toMatch(/consider|should|problem/i)
   })
 
   it('is comfortable with a 12-team pool', () => {
