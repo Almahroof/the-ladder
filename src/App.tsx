@@ -4,6 +4,7 @@ import { RATINGS_ARE_PLACEHOLDER } from './store/load'
 import { useSeason } from './store/useSeason'
 import { Dashboard } from './ui/Dashboard'
 import { Fixtures } from './ui/Fixtures'
+import { HeadToHead } from './ui/HeadToHead'
 import { MatchEntry } from './ui/MatchEntry'
 import { SeasonSetup } from './ui/SeasonSetup'
 import { Banner, Button } from './ui/components'
@@ -19,6 +20,7 @@ import { Banner, Button } from './ui/components'
 const SCREENS = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
   { id: 'entry', label: 'Match entry', icon: '＋' },
+  { id: 'h2h', label: 'Head-to-head', icon: '⊞' },
   { id: 'fixtures', label: 'Fixtures', icon: '▤' },
   { id: 'setup', label: 'Setup & pools', icon: '⚙' },
 ] as const
@@ -112,6 +114,7 @@ export function App() {
 
           {screen === 'dashboard' && <Dashboard season={season} />}
           {screen === 'entry' && <MatchEntry season={season} />}
+          {screen === 'h2h' && <HeadToHead season={season} />}
           {screen === 'fixtures' && <Fixtures season={season} />}
           {screen === 'setup' && <SeasonSetup season={season} />}
         </main>

@@ -6,6 +6,8 @@ import type { MatchRecord } from './match'
 import {
   FORM_LENGTH,
   dashboard,
+  findCycles,
+  matchRatings,
   h2hCell,
   headToHead,
   headToHeadMatrix,
@@ -374,6 +376,89 @@ describe('headToHead', () => {
 
     // Elo would put yusuf first; head-to-head correctly overrules it.
     expect(positions.indexOf('shadow')).toBeLessThan(positions.indexOf('yusuf'))
+  })
+})
+
+describe('findCycles', () => {
+  const cycleLog = () => {
+    counter = 0
+    return [
+      match({ playerAId: 'shadow', playerBId: 'yusuf', goalsA: 1, goalsB: 0 }),
+      match({ playerAId: 'yusuf', playerBId: 'jonathan', goalsA: 1, goalsB: 0 }),
+      match({ playerAId: 'jonathan', playerBId: 'shadow', goalsA: 1, goalsB: 0 }),
+    ]
+  }
+
+  it('finds the cycle section 7 names', () => {
+    const cycles = findCycles(headToHead(cycleLog(), PLAYERS), PLAYERS)
+
+    expect(cycles).toHaveLength(1)
+    expect(cycles[0]!.sort()).toEqual(['jonathan', 'shadow', 'yusuf'])
+  })
+
+  it('reports a cycle once, not once per rotation', () => {
+    // A->B->C->A, B->C->A->B and C->A->B->C are the same cycle.
+    expect(findCycles(headToHead(cycleLog(), PLAYERS), PLAYERS)).toHaveLength(1)
+  })
+
+  it('finds nothing when results are transitive', () => {
+    counter = 0
+    const log = [
+      match({ playerAId: 'shadow', playerBId: 'yusuf', goalsA: 1, goalsB: 0 }),
+      match({ playerAId: 'yusuf', playerBId: 'jonathan', goalsA: 1, goalsB: 0 }),
+      match({ playerAId: 'shadow', playerBId: 'jonathan', goalsA: 1, goalsB: 0 }),
+    ]
+
+    expect(findCycles(headToHead(log, PLAYERS), PLAYERS)).toEqual([])
+  })
+
+  it('finds nothing in an empty log', () => {
+    expect(findCycles(headToHead([], PLAYERS), PLAYERS)).toEqual([])
+  })
+
+  it('does not treat an unplayed pairing as a win', () => {
+    counter = 0
+    const log = [match({ playerAId: 'shadow', playerBId: 'yusuf', goalsA: 1, goalsB: 0 })]
+
+    expect(findCycles(headToHead(log, PLAYERS), PLAYERS)).toEqual([])
+  })
+
+  it('breaks a level record on goal difference', () => {
+    // Each pairing is W1 L1, so only goal difference separates them.
+    counter = 0
+    const log = [
+      match({ playerAId: 'shadow', playerBId: 'yusuf', goalsA: 3, goalsB: 0 }),
+      match({ playerAId: 'shadow', playerBId: 'yusuf', goalsA: 0, goalsB: 1 }),
+      match({ playerAId: 'yusuf', playerBId: 'jonathan', goalsA: 3, goalsB: 0 }),
+      match({ playerAId: 'yusuf', playerBId: 'jonathan', goalsA: 0, goalsB: 1 }),
+      match({ playerAId: 'jonathan', playerBId: 'shadow', goalsA: 3, goalsB: 0 }),
+      match({ playerAId: 'jonathan', playerBId: 'shadow', goalsA: 0, goalsB: 1 }),
+    ]
+
+    expect(findCycles(headToHead(log, PLAYERS), PLAYERS)).toHaveLength(1)
+  })
+})
+
+describe('matchRatings', () => {
+  it('gives the rating change each match caused', () => {
+    const log = miniSeason()
+    const ratings = matchRatings(log, PLAYERS, TEAMS, DEFAULT_ELO_PARAMS)
+
+    expect(ratings.size).toBe(log.length)
+    for (const entry of ratings.values()) {
+      expect(entry.changeA + entry.changeB).toBeCloseTo(0, 10)
+    }
+  })
+
+  it('leaves out a superseded match', () => {
+    counter = 0
+    const bogus = match({ id: 'bogus', goalsA: 9, goalsB: 0 })
+    const fix = match({ id: 'fix', goalsA: 1, goalsB: 0, correctsMatchId: 'bogus' })
+
+    const ratings = matchRatings([bogus, fix], PLAYERS, TEAMS, DEFAULT_ELO_PARAMS)
+
+    expect(ratings.has('bogus')).toBe(false)
+    expect(ratings.has('fix')).toBe(true)
   })
 })
 

@@ -8,7 +8,12 @@
  * Everything here is derived from the match log on demand. Nothing is stored.
  */
 
-import { DEFAULT_ELO_PARAMS, type EloParams, resolveScore } from './elo'
+import {
+  DEFAULT_ELO_PARAMS,
+  type EloParams,
+  type MatchRating,
+  resolveScore,
+} from './elo'
 import {
   type ConfidenceOptions,
   type ConfidenceResult,
@@ -298,6 +303,53 @@ export function headToHeadMatrix(
   )
 }
 
+/**
+ * Three-player cycles: A has the better record against B, B against C, and C
+ * against A.
+ *
+ * Section 7 names this as the reason the matrix exists — "this catches cycles
+ * that a single number hides". A cycle means no linear order can be faithful to
+ * the results, so the skill ranking is confidently expressing something the
+ * matches do not actually support. Worth stating outright rather than leaving
+ * a reader to spot it.
+ *
+ * Ties on record fall back to goal difference; a pairing with no matches never
+ * counts as beaten.
+ */
+export function findCycles(
+  h2h: HeadToHead,
+  playerIds: readonly string[],
+): string[][] {
+  const beats = (a: string, b: string): boolean => {
+    const cell = h2hCell(h2h, a, b)
+    if (!cell || cell.played === 0) return false
+    if (cell.won !== cell.lost) return cell.won > cell.lost
+    return cell.goalDifference > 0
+  }
+
+  const found: string[][] = []
+
+  for (const a of playerIds) {
+    for (const b of playerIds) {
+      for (const c of playerIds) {
+        if (a === b || b === c || a === c) continue
+        if (!beats(a, b) || !beats(b, c) || !beats(c, a)) continue
+
+        // Record each cycle once rather than once per rotation.
+        const trio = [a, b, c]
+        const first = trio.indexOf([...trio].sort()[0]!)
+        const canonical = [...trio.slice(first), ...trio.slice(0, first)]
+
+        if (!found.some((existing) => existing.join() === canonical.join())) {
+          found.push(canonical)
+        }
+      }
+    }
+  }
+
+  return found
+}
+
 // -- Skill ranking -------------------------------------------------------------
 
 export interface SkillRow {
@@ -371,6 +423,25 @@ export function skillRanking(
   rows.sort((a, b) => b.elo - a.elo || a.playerId.localeCompare(b.playerId))
 
   return { rows, confidence }
+}
+
+/**
+ * What each match did to the two ratings involved, keyed by match id.
+ *
+ * Replayed across the whole log for the same reason as `skillRanking`: a
+ * match's effect depends on the ratings going into it, so it cannot be
+ * recomputed from a single season in isolation.
+ */
+export function matchRatings(
+  matches: readonly MatchRecord[],
+  playerIds: readonly string[],
+  teams: ReadonlyMap<string, RatedTeam>,
+  params: EloParams,
+): Map<string, MatchRating> {
+  const inputs = activeMatches(matches).map((match) => toEloInput(match, teams))
+  const { history } = replayLog(inputs, playerIds, params)
+
+  return new Map(history.map((entry) => [entry.matchId, entry]))
 }
 
 // -- Dashboard -----------------------------------------------------------------
