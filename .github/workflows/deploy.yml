@@ -30,12 +30,10 @@ jobs:
 
       - run: npm ci
 
-      # `enablement: true` turns Pages on for the repository on the first run,
-      # so there is no manual step in Settings before the site can go live.
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Pages is enabled once by hand, in Settings -> Pages -> Source: GitHub
+      # Actions. `actions/configure-pages` can do it with `enablement: true`,
+      # but only if the default token is allowed to create a Pages site, which
+      # a new repository generally is not — it fails the whole run instead.
 
       # The engine decides every rating and every table, so a red test must
       # stop the deploy rather than quietly publishing a wrong ladder.
