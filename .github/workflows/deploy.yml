@@ -35,6 +35,13 @@ jobs:
       # but only if the default token is allowed to create a Pages site, which
       # a new repository generally is not — it fails the whole run instead.
 
+      # The Build step below calls `vite build` directly, so that it can pass
+      # `--base`. That bypasses the `build` script's `tsc --noEmit &&` prefix,
+      # and esbuild strips types without checking them — so without this step a
+      # type error builds green and deploys. It has to be its own step.
+      - name: Typecheck
+        run: npm run typecheck
+
       # The engine decides every rating and every table, so a red test must
       # stop the deploy rather than quietly publishing a wrong ladder.
       - name: Test
