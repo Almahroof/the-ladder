@@ -61,11 +61,16 @@ export function playerResults(matches: readonly MatchRecord[]): PlayerResult[] {
   return orderedMatches(activeMatches(matches)).flatMap((match) => {
     const score = resolveScore(match)
 
-    const outcomeFor = (mine: number, theirs: number): Outcome =>
-      mine > theirs ? 'W' : mine < theirs ? 'L' : 'D'
+    // Read the outcome off the *resolved* score rather than recomputing it from
+    // the goals. The two differ whenever a section 4 rule overrode the typed
+    // score without levelling it — extra time on an unlevel scoreline is the
+    // case `resolveScore` guards against — and a table that disagreed with the
+    // ratings about who won would undo the point of deriving both from one log.
+    const outcomeFor = (eloScore: number): Outcome =>
+      eloScore > 0.5 ? 'W' : eloScore < 0.5 ? 'L' : 'D'
 
-    const a = outcomeFor(score.goalsA, score.goalsB)
-    const b = outcomeFor(score.goalsB, score.goalsA)
+    const a = outcomeFor(score.scoreA)
+    const b = outcomeFor(score.scoreB)
 
     return [
       {
@@ -78,7 +83,7 @@ export function playerResults(matches: readonly MatchRecord[]): PlayerResult[] {
         goalsFor: score.goalsA,
         goalsAgainst: score.goalsB,
         outcome: a,
-        points: POINTS[a],
+        points: score.pointsA,
       },
       {
         matchId: match.id,
@@ -90,7 +95,7 @@ export function playerResults(matches: readonly MatchRecord[]): PlayerResult[] {
         goalsFor: score.goalsB,
         goalsAgainst: score.goalsA,
         outcome: b,
-        points: POINTS[b],
+        points: score.pointsB,
       },
     ]
   })

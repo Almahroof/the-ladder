@@ -7,10 +7,10 @@
  * the app can say "this field is broken" instead of showing a blank screen.
  */
 
-import { DEFAULT_ELO_PARAMS, type EloParams } from '../engine/elo'
+import { DEFAULT_ELO_PARAMS, type EloParams, type Side } from '../engine/elo'
 import type { MatchRecord } from '../engine/match'
 import { DEFAULT_SEASON_CONFIG, type SeasonConfig } from '../engine/season'
-import type { Fixture } from '../engine/schedule'
+import type { Fixture, FixtureStatus, LegNumber } from '../engine/schedule'
 
 export type SeasonStatus = 'setup' | 'active' | 'complete'
 
@@ -53,6 +53,249 @@ export interface ParseResult {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+// -- Row readers ---------------------------------------------------------------
+//
+// Fixtures and matches are the two arrays everything downstream computes from,
+// so they get checked field by field rather than trusted. The split is between
+// fields that carry *identity or arithmetic* — a missing player id, a goal
+// count that is a string — where there is nothing sensible to fall back to and
+// the row is dropped, and fields that are structural or cosmetic, where a
+// default is reported and the row survives. Dropping a row changes the ladder,
+// so every drop says so loudly enough to reach the banner.
+
+/** A required string. Null means the row cannot be used. */
+function reqText(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+): string | null {
+  const value = source[key]
+  if (typeof value === 'string' && value !== '') return value
+  problems.push(`${where}: "${key}" is missing or not text.`)
+  return null
+}
+
+/** A string that may legitimately be absent or null. */
+function optText(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+): string | null {
+  const value = source[key]
+  if (value === null || value === undefined) return null
+  if (typeof value === 'string') return value
+  problems.push(`${where}: "${key}" should be text or null.`)
+  return null
+}
+
+/** A required whole number at or above `min`. Null means the row cannot be used. */
+function reqInt(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+  min: number,
+): number | null {
+  const value = source[key]
+  if (typeof value === 'number' && Number.isInteger(value) && value >= min) return value
+  problems.push(`${where}: "${key}" should be a whole number of at least ${min}.`)
+  return null
+}
+
+/** A whole number that falls back to `fallback` rather than losing the row. */
+function optInt(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+  fallback: number,
+): number {
+  const value = source[key]
+  if (typeof value === 'number' && Number.isInteger(value)) return value
+  if (value !== undefined) problems.push(`${where}: "${key}" should be a whole number.`)
+  return fallback
+}
+
+function flag(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+): boolean {
+  const value = source[key]
+  if (typeof value === 'boolean') return value
+  if (value !== undefined && value !== null) {
+    problems.push(`${where}: "${key}" should be true or false.`)
+  }
+  return false
+}
+
+function side(
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+  problems: string[],
+): Side | null {
+  const value = source[key]
+  if (value === 'A' || value === 'B') return value
+  if (value !== null && value !== undefined) {
+    problems.push(`${where}: "${key}" should be "A", "B" or null.`)
+  }
+  return null
+}
+
+const FIXTURE_STATUSES: FixtureStatus[] = ['scheduled', 'partial', 'played']
+
+function parseFixtures(raw: unknown, problems: string[]): Fixture[] {
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) {
+    problems.push('"fixtures" is not a list; it was ignored.')
+    return []
+  }
+
+  return raw.flatMap((entry, index): Fixture[] => {
+    const where = `fixtures[${index}]`
+
+    if (!isRecord(entry)) {
+      problems.push(`${where} is not an object; the fixture was dropped.`)
+      return []
+    }
+
+    const id = reqText(entry, 'id', where, problems)
+    const seasonId = reqText(entry, 'seasonId', where, problems)
+    const playerAId = reqText(entry, 'playerAId', where, problems)
+    const playerBId = reqText(entry, 'playerBId', where, problems)
+    const teamAId = reqText(entry, 'teamAId', where, problems)
+    const teamBId = reqText(entry, 'teamBId', where, problems)
+
+    if (!id || !seasonId || !playerAId || !playerBId || !teamAId || !teamBId) {
+      problems.push(`${where} was dropped.`)
+      return []
+    }
+
+    const status = entry['status']
+    if (!FIXTURE_STATUSES.includes(status as FixtureStatus)) {
+      if (status !== undefined) problems.push(`${where}: "status" is not a fixture status.`)
+    }
+
+    return [
+      {
+        id,
+        seasonId,
+        round: optInt(entry, 'round', where, problems, 1),
+        order: optInt(entry, 'order', where, problems, 0),
+        date: optText(entry, 'date', where, problems),
+        playerAId,
+        playerBId,
+        teamAId,
+        teamBId,
+        status: FIXTURE_STATUSES.includes(status as FixtureStatus)
+          ? (status as FixtureStatus)
+          : 'scheduled',
+      },
+    ]
+  })
+}
+
+function parseMatches(raw: unknown, problems: string[]): MatchRecord[] {
+  if (raw === undefined || raw === null) return []
+  if (!Array.isArray(raw)) {
+    problems.push('"matches" is not a list; it was ignored.')
+    return []
+  }
+
+  return raw.flatMap((entry, index): MatchRecord[] => {
+    const where = `matches[${index}]`
+
+    if (!isRecord(entry)) {
+      problems.push(`${where} is not an object; the result was dropped.`)
+      return []
+    }
+
+    const id = reqText(entry, 'id', where, problems)
+    const seasonId = reqText(entry, 'seasonId', where, problems)
+    const date = reqText(entry, 'date', where, problems)
+    const playerAId = reqText(entry, 'playerAId', where, problems)
+    const playerBId = reqText(entry, 'playerBId', where, problems)
+    const teamAId = reqText(entry, 'teamAId', where, problems)
+    const teamBId = reqText(entry, 'teamBId', where, problems)
+    const goalsA = reqInt(entry, 'goalsA', where, problems, 0)
+    const goalsB = reqInt(entry, 'goalsB', where, problems, 0)
+
+    if (
+      !id ||
+      !seasonId ||
+      !date ||
+      !playerAId ||
+      !playerBId ||
+      !teamAId ||
+      !teamBId ||
+      goalsA === null ||
+      goalsB === null
+    ) {
+      problems.push(`${where} was dropped, so it is not counted in any rating.`)
+      return []
+    }
+
+    const rawLeg = entry['leg']
+    const leg: LegNumber | null = rawLeg === 1 || rawLeg === 2 ? rawLeg : null
+    if (leg === null && rawLeg !== null && rawLeg !== undefined) {
+      problems.push(`${where}: "leg" should be 1, 2 or null.`)
+    }
+
+    return [
+      {
+        id,
+        seasonId,
+        fixtureId: optText(entry, 'fixtureId', where, problems),
+        leg,
+        date,
+        playerAId,
+        playerBId,
+        teamAId,
+        teamBId,
+        goalsA,
+        goalsB,
+        wentToExtraTime: flag(entry, 'wentToExtraTime', where, problems),
+        pensWinner: side(entry, 'pensWinner', where, problems),
+        abandoned: flag(entry, 'abandoned', where, problems),
+        quitBy: side(entry, 'quitBy', where, problems),
+        notes: optText(entry, 'notes', where, problems) ?? '',
+        confirmedBy: optText(entry, 'confirmedBy', where, problems),
+        enteredBy: optText(entry, 'enteredBy', where, problems) ?? '',
+        enteredAt: optText(entry, 'enteredAt', where, problems) ?? date,
+        correctsMatchId: optText(entry, 'correctsMatchId', where, problems),
+      },
+    ]
+  })
+}
+
+/**
+ * Ids are the key corrections resolve through, so a duplicate does not merely
+ * repeat a row — `supersededIds` matches by id, and a correction aimed at one
+ * of a duplicated pair silently removes both. That is a wrong ladder with no
+ * error anywhere, which is worth saying out loud.
+ */
+function reportDuplicateIds(
+  ids: readonly string[],
+  label: string,
+  problems: string[],
+): void {
+  const seen = new Set<string>()
+  const duplicated = new Set<string>()
+
+  for (const id of ids) {
+    if (seen.has(id)) duplicated.add(id)
+    seen.add(id)
+  }
+
+  for (const id of duplicated) {
+    problems.push(`More than one ${label} has the id "${id}".`)
+  }
 }
 
 /**
@@ -149,6 +392,12 @@ export function parseSeasonFile(raw: unknown): ParseResult {
   const status = source['status']
   const statuses: SeasonStatus[] = ['setup', 'active', 'complete']
 
+  const fixtures = parseFixtures(source['fixtures'], problems)
+  const matches = parseMatches(source['matches'], problems)
+
+  reportDuplicateIds(fixtures.map((fixture) => fixture.id), 'fixture', problems)
+  reportDuplicateIds(matches.map((match) => match.id), 'result', problems)
+
   const file: SeasonFile = {
     id: str('id', 'season-1'),
     name: str('name', 'Season 1'),
@@ -166,8 +415,8 @@ export function parseSeasonFile(raw: unknown): ParseResult {
     gamesPerPairing: num('gamesPerPairing', DEFAULT_SEASON_CONFIG.gamesPerPairing),
     legsPerFixture: num('legsPerFixture', DEFAULT_SEASON_CONFIG.legsPerFixture),
     pools,
-    fixtures: Array.isArray(source['fixtures']) ? (source['fixtures'] as Fixture[]) : [],
-    matches: Array.isArray(source['matches']) ? (source['matches'] as MatchRecord[]) : [],
+    fixtures,
+    matches,
   }
 
   if (typeof source['fixtureSeed'] === 'number') file.fixtureSeed = source['fixtureSeed']

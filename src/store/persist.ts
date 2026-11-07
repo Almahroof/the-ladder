@@ -22,6 +22,8 @@ export interface WorkingCopy {
   baseline: string
   savedAt: string
   file: SeasonFile
+  /** Anything that had to be repaired when the copy was read back. */
+  problems: string[]
 }
 
 /** How the working copy relates to what is committed in the repo. */
@@ -38,6 +40,13 @@ export interface Loaded {
   committed: SeasonFile
   state: CopyState
   problems: string[]
+  /**
+   * Fingerprint of the committed file this working copy was built on — which,
+   * once diverged, is *not* the fingerprint of the file now in the repo. Every
+   * later save must carry this same value forward, or the divergence erases
+   * itself the moment anything is edited.
+   */
+  baseline: string
 }
 
 function keyFor(seasonId: string): string {
@@ -64,10 +73,13 @@ export function readWorkingCopy(seasonId: string): WorkingCopy | null {
     const parsed = JSON.parse(raw) as Partial<WorkingCopy>
     if (!parsed.file || typeof parsed.baseline !== 'string') return null
 
+    const { file, problems } = parseSeasonFile(parsed.file)
+
     return {
       baseline: parsed.baseline,
       savedAt: parsed.savedAt ?? 'unknown',
-      file: parseSeasonFile(parsed.file).file,
+      file,
+      problems,
     }
   } catch {
     // A corrupt working copy should not take the app down with it.
@@ -83,7 +95,8 @@ export function writeWorkingCopy(
   const store = storage()
   if (!store) return false
 
-  const copy: WorkingCopy = { baseline, savedAt: now, file }
+  // `problems` describes a copy as it was *read*, so it is not stored.
+  const copy: Omit<WorkingCopy, 'problems'> = { baseline, savedAt: now, file }
 
   try {
     store.setItem(keyFor(file.id), JSON.stringify(copy))
@@ -110,15 +123,26 @@ export function resolve(committed: SeasonFile, problems: string[] = []): Loaded 
   const local = readWorkingCopy(committed.id)
 
   if (!local) {
-    return { file: committed, committed, state: { kind: 'committed-only' }, problems }
+    return {
+      file: committed,
+      committed,
+      state: { kind: 'committed-only' },
+      problems,
+      baseline,
+    }
   }
+
+  // A repair made while reading the working copy is just as worth reporting as
+  // one made to the committed file — it is the copy actually on screen.
+  const combined = [...problems, ...local.problems]
 
   if (local.baseline === baseline) {
     return {
       file: local.file,
       committed,
       state: { kind: 'local-ahead', savedAt: local.savedAt },
-      problems,
+      problems: combined,
+      baseline,
     }
   }
 
@@ -126,7 +150,10 @@ export function resolve(committed: SeasonFile, problems: string[] = []): Loaded 
     file: local.file,
     committed,
     state: { kind: 'diverged', savedAt: local.savedAt },
-    problems,
+    problems: combined,
+    // The baseline the copy was built on, deliberately not the current one:
+    // carrying it forward is what keeps the divergence visible after an edit.
+    baseline: local.baseline,
   }
 }
 
@@ -143,9 +170,16 @@ export function exportFile(file: SeasonFile): void {
   const link = document.createElement('a')
   link.href = url
   link.download = `${file.id}.json`
+
+  // The link has to be in the document for the click to count in Firefox, and
+  // revoking the URL in the same tick can cancel the download before it starts.
+  document.body.appendChild(link)
   link.click()
 
-  URL.revokeObjectURL(url)
+  setTimeout(() => {
+    link.remove()
+    URL.revokeObjectURL(url)
+  }, 0)
 }
 
 export interface ImportResult {

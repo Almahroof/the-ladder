@@ -82,6 +82,131 @@ describe('parseSeasonFile', () => {
   it('normalises an unknown status to setup', () => {
     expect(parseSeasonFile({ ...seasonFile, status: 'nonsense' }).file.status).toBe('setup')
   })
+})
+
+/**
+ * Season files are hand-edited and merged through git, so the log is the most
+ * likely thing in the repo to arrive malformed — and it is what every rating,
+ * table and ranking is computed from. A bad row must be reported and dropped,
+ * never passed downstream to produce a quietly wrong ladder.
+ */
+describe('parseSeasonFile — the match log', () => {
+  const validMatch = {
+    id: 'm1',
+    seasonId: 'season-1',
+    fixtureId: 'f1',
+    leg: 1,
+    date: '2026-09-01',
+    playerAId: 'shadow',
+    playerBId: 'yusuf',
+    teamAId: 'man-city',
+    teamBId: 'brighton',
+    goalsA: 2,
+    goalsB: 1,
+    wentToExtraTime: false,
+    pensWinner: null,
+    abandoned: false,
+    quitBy: null,
+    notes: '',
+    confirmedBy: 'yusuf',
+    enteredBy: 'shadow',
+    enteredAt: '2026-09-01T21:00:00Z',
+    correctsMatchId: null,
+  }
+
+  const parseMatches = (matches: unknown) =>
+    parseSeasonFile({ ...seasonFile, matches })
+
+  it('keeps a well-formed result untouched', () => {
+    const { file, problems } = parseMatches([validMatch])
+
+    expect(problems).toEqual([])
+    expect(file.matches).toEqual([validMatch])
+  })
+
+  it('drops a result that is not an object', () => {
+    const { file, problems } = parseMatches([null, validMatch])
+
+    expect(file.matches).toHaveLength(1)
+    expect(problems.some((p) => p.includes('matches[0]'))).toBe(true)
+  })
+
+  it('drops a result whose goals are not numbers, rather than rating a string', () => {
+    const { file, problems } = parseMatches([{ ...validMatch, goalsA: '3' }])
+
+    expect(file.matches).toEqual([])
+    expect(problems.some((p) => p.includes('goalsA'))).toBe(true)
+    expect(problems.some((p) => p.includes('not counted in any rating'))).toBe(true)
+  })
+
+  it('drops a result with fractional or negative goals', () => {
+    expect(parseMatches([{ ...validMatch, goalsB: 1.5 }]).file.matches).toEqual([])
+    expect(parseMatches([{ ...validMatch, goalsB: -1 }]).file.matches).toEqual([])
+  })
+
+  it('drops a result missing a player id', () => {
+    const { file, problems } = parseMatches([{ ...validMatch, playerBId: undefined }])
+
+    expect(file.matches).toEqual([])
+    expect(problems.some((p) => p.includes('playerBId'))).toBe(true)
+  })
+
+  it('defaults a structural field instead of losing the result', () => {
+    const { file, problems } = parseMatches([{ ...validMatch, leg: 7, notes: 42 }])
+
+    expect(file.matches).toHaveLength(1)
+    expect(file.matches[0]).toMatchObject({ leg: null, notes: '' })
+    expect(problems.some((p) => p.includes('"leg"'))).toBe(true)
+    expect(problems.some((p) => p.includes('"notes"'))).toBe(true)
+  })
+
+  it('rejects a shoot-out winner that is not a side', () => {
+    const { file, problems } = parseMatches([{ ...validMatch, pensWinner: 'C' }])
+
+    expect(file.matches[0]!.pensWinner).toBeNull()
+    expect(problems.some((p) => p.includes('pensWinner'))).toBe(true)
+  })
+
+  it('ignores a matches field that is not a list', () => {
+    const { file, problems } = parseMatches({ m1: validMatch })
+
+    expect(file.matches).toEqual([])
+    expect(problems.some((p) => p.includes('"matches" is not a list'))).toBe(true)
+  })
+
+  // A correction resolves by id, so a duplicate means one correction can remove
+  // two real results at once — silently, without this check.
+  it('reports two results sharing an id', () => {
+    const { problems } = parseMatches([validMatch, { ...validMatch, goalsA: 5 }])
+
+    expect(problems.some((p) => p.includes('More than one result has the id "m1"'))).toBe(
+      true,
+    )
+  })
+
+  it('drops a malformed fixture and keeps the rest', () => {
+    const fixture = {
+      id: 'f1',
+      seasonId: 'season-1',
+      round: 1,
+      order: 0,
+      date: null,
+      playerAId: 'shadow',
+      playerBId: 'yusuf',
+      teamAId: 'man-city',
+      teamBId: 'brighton',
+      status: 'scheduled',
+    }
+
+    const { file, problems } = parseSeasonFile({
+      ...seasonFile,
+      fixtures: [fixture, { ...fixture, id: 'f2', playerAId: null }],
+    })
+
+    expect(file.fixtures).toHaveLength(1)
+    expect(file.fixtures[0]).toEqual(fixture)
+    expect(problems.some((p) => p.includes('fixtures[1]'))).toBe(true)
+  })
 
   it('round-trips through serialise', () => {
     const { file } = parseSeasonFile(seasonFile)

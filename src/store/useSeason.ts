@@ -6,7 +6,7 @@
  * `localStorage` directly.
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import type { Pools, SeasonConfig } from '../engine/season'
 import type { RatedTeam } from '../engine/teams'
@@ -76,34 +76,56 @@ export function useSeason(): Season {
     return resolved
   }, [file.playerIds, file.pools, teams])
 
+  /**
+   * Mirrors `loaded` so `update` can read the current season without a state
+   * updater. Writing to `localStorage` and setting an error are side effects,
+   * and React requires updaters to be pure — under `StrictMode` it runs them
+   * twice, so a write placed inside one happens twice too.
+   *
+   * It is advanced in `commit` rather than during render, which keeps two
+   * `update` calls in the same tick composing correctly.
+   */
+  const latest = useRef(loaded)
+
+  const commit = useCallback((next: Loaded) => {
+    latest.current = next
+    setLoaded(next)
+  }, [])
+
   const update = useCallback(
     (change: (current: SeasonFile) => SeasonFile) => {
-      setLoaded((current) => {
-        const next = change(current.file)
-        const baseline = fingerprint(current.committed)
-        const saved = writeWorkingCopy(next, baseline, new Date().toISOString())
+      const current = latest.current
+      const next = change(current.file)
+      const savedAt = new Date().toISOString()
 
-        setStorageError(
-          saved
-            ? null
-            : 'This change could not be saved in this browser. Export before closing the tab.',
-        )
+      const saved = writeWorkingCopy(next, current.baseline, savedAt)
 
-        return {
-          ...current,
-          file: next,
-          state: { kind: 'local-ahead', savedAt: new Date().toISOString() },
-        }
+      setStorageError(
+        saved
+          ? null
+          : 'This change could not be saved in this browser. Export before closing the tab.',
+      )
+
+      commit({
+        ...current,
+        file: next,
+        // Editing a diverged copy does not undo the divergence — the repo has
+        // still moved on, and saying otherwise would quietly drop the warning
+        // that stops a night's results being overwritten.
+        state:
+          current.state.kind === 'diverged'
+            ? { kind: 'diverged', savedAt }
+            : { kind: 'local-ahead', savedAt },
       })
     },
-    [],
+    [commit],
   )
 
   const discardLocal = useCallback(() => {
     clearWorkingCopy(committed.id)
-    setLoaded(initial())
+    commit(initial())
     setStorageError(null)
-  }, [committed.id])
+  }, [committed.id, commit])
 
   const exportSeason = useCallback(() => exportFile(file), [file])
 

@@ -94,6 +94,17 @@ describe('playerResults', () => {
     expect(results.map((r) => r.points)).toEqual([1, 1])
   })
 
+  // Section 5.3 blocks this at entry, so it only reaches the table through a
+  // hand-edited log — which is exactly the path the repo-as-database design
+  // leaves open. The table must agree with the ratings even then.
+  it('reads extra time as a draw even when the typed score is not level', () => {
+    const log = [match({ goalsA: 3, goalsB: 1, wentToExtraTime: true })]
+    const results = playerResults(log)
+
+    expect(results.map((r) => r.outcome)).toEqual(['D', 'D'])
+    expect(results.map((r) => r.points)).toEqual([1, 1])
+  })
+
   it('ignores superseded entries', () => {
     const original = match({ id: 'first', goalsA: 9, goalsB: 0 })
     const fix = match({ id: 'second', goalsA: 1, goalsB: 0, correctsMatchId: 'first' })

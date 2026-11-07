@@ -134,6 +134,46 @@ describe('resolve', () => {
     expect(resolve(base, ['something was off']).problems).toEqual(['something was off'])
   })
 
+  it('reports the baseline the copy was built on, not the current one', () => {
+    writeWorkingCopy({ ...base, name: 'Season One' }, 'a-stale-baseline', 'earlier')
+
+    expect(resolve(base).baseline).toBe('a-stale-baseline')
+    expect(resolve(base).baseline).not.toBe(fingerprint(base))
+  })
+
+  /**
+   * The mechanism behind the banner: a save made while diverged has to carry
+   * the *original* baseline forward. Writing the current committed fingerprint
+   * instead makes the next load read as `local-ahead`, and the warning that
+   * stops a night's results being overwritten vanishes on the first keystroke.
+   */
+  it('stays diverged after an edit is saved', () => {
+    writeWorkingCopy({ ...base, name: 'Entered on the sofa' }, 'a-stale-baseline', 'earlier')
+
+    const loaded = resolve(base)
+    expect(loaded.state.kind).toBe('diverged')
+
+    // What `useSeason.update` does on the next keystroke.
+    writeWorkingCopy({ ...loaded.file, name: 'Edited again' }, loaded.baseline, 'later')
+
+    const after = resolve(base)
+    expect(after.state.kind).toBe('diverged')
+    expect(after.file.name).toBe('Edited again')
+  })
+
+  it('surfaces problems found in the working copy, not just the committed file', () => {
+    localStorage.setItem(
+      'the-ladder:season:season-1',
+      JSON.stringify({
+        baseline: fingerprint(base),
+        savedAt: 'now',
+        file: { ...base, matches: [{ id: 'broken' }] },
+      }),
+    )
+
+    expect(resolve(base).problems.some((p) => p.includes('matches[0]'))).toBe(true)
+  })
+
   it('treats an identical local copy as local-ahead, not diverged', () => {
     // Exporting and committing without further edits leaves the two equal.
     writeWorkingCopy(base, fingerprint(base), 'now')
