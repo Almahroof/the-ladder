@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { RATINGS_ARE_PLACEHOLDER } from './store/load'
-import { useSeason } from './store/useSeason'
+import { type ImportOutcome, useSeason } from './store/useSeason'
 import { Dashboard } from './ui/Dashboard'
 import { DraftNight } from './ui/DraftNight'
 import { Fixtures } from './ui/Fixtures'
@@ -42,7 +42,29 @@ export function App() {
   const season = useSeason()
   const [screen, setScreen] = useState<ScreenId>(currentScreen)
   const fileInput = useRef<HTMLInputElement>(null)
-  const [importProblems, setImportProblems] = useState<string[]>([])
+  const [importResult, setImportResult] = useState<ImportOutcome | null>(null)
+
+  /**
+   * An import chosen while there is unexported work, held back until it is
+   * confirmed. Replacing the working copy is the one action here that can
+   * destroy a night's results, and the file picker is a mis-tap away from the
+   * Export button it sits next to.
+   */
+  const [pendingImport, setPendingImport] = useState<File | null>(null)
+
+  const runImport = async (chosen: File) => {
+    setPendingImport(null)
+    setImportResult(await season.importSeason(chosen))
+  }
+
+  const chooseImport = async (chosen: File) => {
+    setImportResult(null)
+    if (season.dirty) {
+      setPendingImport(chosen)
+      return
+    }
+    await runImport(chosen)
+  }
 
   useEffect(() => {
     const onHashChange = () => setScreen(currentScreen())
@@ -87,8 +109,9 @@ export function App() {
             onChange={async (event) => {
               const chosen = event.target.files?.[0]
               if (!chosen) return
-              setImportProblems(await season.importSeason(chosen))
+              // Cleared before awaiting, so the same file can be picked twice.
               event.target.value = ''
+              await chooseImport(chosen)
             }}
           />
           <Button onClick={() => fileInput.current?.click()}>Import</Button>
@@ -122,7 +145,13 @@ export function App() {
         </nav>
 
         <main className="mt-6 space-y-4">
-          <Notices season={season} importProblems={importProblems} />
+          <Notices
+            season={season}
+            importResult={importResult}
+            pendingImport={pendingImport}
+            onConfirmImport={runImport}
+            onCancelImport={() => setPendingImport(null)}
+          />
 
           {screen === 'dashboard' && <Dashboard season={season} />}
           {screen === 'entry' && <MatchEntry season={season} />}
@@ -143,10 +172,16 @@ export function App() {
 
 function Notices({
   season,
-  importProblems,
+  importResult,
+  pendingImport,
+  onConfirmImport,
+  onCancelImport,
 }: {
   season: ReturnType<typeof useSeason>
-  importProblems: string[]
+  importResult: ImportOutcome | null
+  pendingImport: File | null
+  onConfirmImport: (chosen: File) => void
+  onCancelImport: () => void
 }) {
   return (
     <>
@@ -158,8 +193,35 @@ function Notices({
         </Banner>
       )}
 
-      {importProblems.length > 0 && (
-        <Banner title="The imported file needed repairs.">{importProblems.join(' ')}</Banner>
+      {pendingImport && (
+        <Banner
+          tone="error"
+          title="Replace this browser’s copy?"
+          action={
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={() => onConfirmImport(pendingImport)}>
+                Replace
+              </Button>
+              <Button onClick={onCancelImport}>Cancel</Button>
+            </div>
+          }
+        >
+          Importing <strong>{pendingImport.name}</strong> throws away everything entered
+          here since the last commit. Export first if you want to keep it.
+        </Banner>
+      )}
+
+      {importResult && importResult.problems.length > 0 && (
+        <Banner
+          tone={importResult.imported ? 'warn' : 'error'}
+          title={
+            importResult.imported
+              ? 'The imported file needed repairs.'
+              : 'Nothing was imported.'
+          }
+        >
+          {importResult.problems.join(' ')}
+        </Banner>
       )}
 
       {season.copyState.kind === 'diverged' && (

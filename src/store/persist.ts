@@ -187,6 +187,37 @@ export interface ImportResult {
   problems: string[]
 }
 
+/**
+ * A shape check on the raw JSON, before anything is replaced.
+ *
+ * `parseSeasonFile` is deliberately forgiving: it repairs and reports rather
+ * than throwing, which is right for the committed file — a broken field should
+ * not blank the app. It is wrong here. Handed `{"a":1}` it returns a perfectly
+ * valid *empty* season, and importing that over a working copy would discard a
+ * night's results behind a note about repairs.
+ *
+ * So an import is allowed to fail, and the bar is deliberately low: anything
+ * carrying a season id and at least one player gets through to the real parser.
+ */
+function seasonShapeProblems(raw: unknown): string[] {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return ['It does not contain a season at all.']
+  }
+
+  const source = raw as Record<string, unknown>
+  const problems: string[] = []
+
+  if (typeof source['id'] !== 'string' || source['id'] === '') {
+    problems.push('It has no season id.')
+  }
+
+  if (!Array.isArray(source['players']) || source['players'].length === 0) {
+    problems.push('It lists no players.')
+  }
+
+  return problems
+}
+
 /** Reads a season file chosen from disk. */
 export async function importFile(selected: File): Promise<ImportResult> {
   let text: string
@@ -202,6 +233,11 @@ export async function importFile(selected: File): Promise<ImportResult> {
     raw = JSON.parse(text)
   } catch {
     return { file: null, problems: ['That file is not valid JSON.'] }
+  }
+
+  const shape = seasonShapeProblems(raw)
+  if (shape.length > 0) {
+    return { file: null, problems: ['That file is not a season file.', ...shape] }
   }
 
   const { file, problems } = parseSeasonFile(raw)

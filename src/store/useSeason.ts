@@ -22,6 +22,16 @@ import {
 } from './persist'
 import { type SeasonFile, fingerprint, poolsLocked, toConfig } from './schema'
 
+/**
+ * What an import did. `imported: false` with problems is a refusal, not a
+ * repair — the caller must be able to tell those apart, because one of them
+ * replaced the season and the other deliberately did not.
+ */
+export interface ImportOutcome {
+  imported: boolean
+  problems: string[]
+}
+
 export interface Season {
   file: SeasonFile
   committed: SeasonFile
@@ -45,7 +55,7 @@ export interface Season {
   update: (change: (file: SeasonFile) => SeasonFile) => void
   discardLocal: () => void
   exportSeason: () => void
-  importSeason: (selected: File) => Promise<string[]>
+  importSeason: (selected: File) => Promise<ImportOutcome>
 }
 
 function initial(): Loaded {
@@ -130,14 +140,28 @@ export function useSeason(): Season {
   const exportSeason = useCallback(() => exportFile(file), [file])
 
   const importSeason = useCallback(
-    async (selected: File): Promise<string[]> => {
+    async (selected: File): Promise<ImportOutcome> => {
       const result = await importFile(selected)
-      if (!result.file) return result.problems
+      if (!result.file) return { imported: false, problems: result.problems }
+
+      // The working copy is keyed by season id, but it is read back by the
+      // *committed* file's id. Importing a different season would write it to a
+      // key nothing ever reads: the import would vanish on reload, and
+      // `discardLocal` would clear the wrong key and leave it orphaned.
+      if (result.file.id !== committed.id) {
+        return {
+          imported: false,
+          problems: [
+            `That file is "${result.file.id}", but this ladder is running "${committed.id}".`,
+            'Importing it here would strand it in this browser. Commit it to the repo instead.',
+          ],
+        }
+      }
 
       update(() => result.file as SeasonFile)
-      return result.problems
+      return { imported: true, problems: result.problems }
     },
-    [update],
+    [update, committed.id],
   )
 
   const nameOf = useCallback(

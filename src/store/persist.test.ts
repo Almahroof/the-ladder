@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import seasonFile from '../../data/season-1.json'
 import {
   clearWorkingCopy,
+  importFile,
   readWorkingCopy,
   resolve,
   writeWorkingCopy,
@@ -86,6 +87,64 @@ describe('the working copy', () => {
 
     expect(readWorkingCopy('season-1')).toBeNull()
     expect(writeWorkingCopy(base, 'abc', 'now')).toBe(false)
+  })
+})
+
+/**
+ * Import replaces the working copy outright, so it is the one action in the app
+ * that can destroy a night's results. `parseSeasonFile` never fails by design —
+ * that is right for the committed file and wrong here, so `importFile` has to
+ * be able to refuse before the forgiving parser ever sees the input.
+ */
+describe('importFile', () => {
+  const asFile = (body: string) =>
+    ({ text: () => Promise.resolve(body) }) as unknown as File
+
+  it('accepts a real season file', async () => {
+    const result = await importFile(asFile(JSON.stringify(seasonFile)))
+
+    expect(result.problems).toEqual([])
+    expect(result.file?.id).toBe('season-1')
+  })
+
+  it('refuses a file that is not JSON', async () => {
+    const result = await importFile(asFile('{ not json'))
+
+    expect(result.file).toBeNull()
+    expect(result.problems).toEqual(['That file is not valid JSON.'])
+  })
+
+  // The case that made this necessary: `parseSeasonFile({a:1})` returns a
+  // perfectly valid *empty* season, which would silently replace everything.
+  it('refuses JSON that is not a season, rather than defaulting one', async () => {
+    const result = await importFile(asFile('{"a":1}'))
+
+    expect(result.file).toBeNull()
+    expect(result.problems[0]).toBe('That file is not a season file.')
+    expect(result.problems.join(' ')).toContain('no season id')
+    expect(result.problems.join(' ')).toContain('no players')
+  })
+
+  it('refuses an array and a bare value', async () => {
+    expect((await importFile(asFile('[]'))).file).toBeNull()
+    expect((await importFile(asFile('42'))).file).toBeNull()
+    expect((await importFile(asFile('null'))).file).toBeNull()
+  })
+
+  it('refuses a season with an empty player list', async () => {
+    const result = await importFile(asFile(JSON.stringify({ id: 'season-1', players: [] })))
+
+    expect(result.file).toBeNull()
+    expect(result.problems.join(' ')).toContain('no players')
+  })
+
+  it('still reports repairs on a file it does accept', async () => {
+    const result = await importFile(
+      asFile(JSON.stringify({ ...seasonFile, poolSize: 'ten' })),
+    )
+
+    expect(result.file).not.toBeNull()
+    expect(result.problems.some((p) => p.includes('poolSize'))).toBe(true)
   })
 })
 
