@@ -6,6 +6,10 @@ A skill ranking for four friends playing EA Sports FC 26 on one sofa.
 
 Players: Shadow, Yusuf, Jonathan, Nana Kojo.
 
+**New here? [GUIDE.md](GUIDE.md) is the step-by-step** — setup, draft night,
+drawing fixtures, entering a result, and committing it. This README is the
+reasoning behind it.
+
 The question it exists to answer is narrow and specific: **who is actually the
 best at FC26?** Not who drafted the best teams, not who got the kindest run of
 fixtures — who is best. Everything in here follows from taking that question
@@ -236,6 +240,7 @@ decided. Full detail in [PLAN.md](PLAN.md#open-questions).
 
 ## Source documents
 
+- [`GUIDE.md`](GUIDE.md) — how to run a season, screen by screen
 - [`fc26-ranking-system-1.md`](fc26-ranking-system-1.md) — the full scope and rules
 - [`fc26-ranking-system-app-screens-1.pdf`](fc26-ranking-system-app-screens-1.pdf) — the screen mockups
 - [`PLAN.md`](PLAN.md) — build plan, deviations from the documents, open questions,
